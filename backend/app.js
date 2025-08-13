@@ -18,6 +18,9 @@ app.use(
   }),
 );
 
+import healthCheckRouter from './src/routes/healthcheck.routes.js';
+app.use('/api/v1/healthcheck', healthCheckRouter);
+
 app.get('/instagram', (req, res) => {
   res.send('Hello from Instagram');
 });
