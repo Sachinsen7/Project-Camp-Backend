@@ -7,8 +7,8 @@ import { sendEmail, emailVefification } from '../utils/mail.js';
 const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await UserModel.findById(userId);
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+        const accessToken = await user.generateAccessToken();
+        const refreshToken = await user.generateRefreshToken();
 
         user.refreshToken = refreshToken;
         await user.save({ validateBeforeSave: false });
@@ -22,13 +22,17 @@ const generateAccessAndRefreshToken = async (userId) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-    const { email, username, password, role } = req.body;
+    const { email, username, password } = req.body;
 
-    const existiedUser = await UserModel.findOne({
+    if (!email || !username || !password) {
+        throw new ApiError(400, 'All required fields must be provided');
+    }
+
+    const existedUser = await UserModel.findOne({
         $or: [{ username }, { email }],
     });
 
-    if (existiedUser) {
+    if (existedUser) {
         throw new ApiError(409, 'User with email or username already exists');
     }
 
@@ -40,15 +44,14 @@ const registerUser = asyncHandler(async (req, res) => {
     });
 
     const { unHashedToken, hashedToken, tokenExpiry } =
-        user.generateTemporaryToken();
+        await user.generateTemporaryToken();
 
     user.emailVerificationToken = hashedToken;
     user.emailVerificationExpiry = tokenExpiry;
-
     await user.save({ validateBeforeSave: false });
 
     await sendEmail({
-        email: user?.email,
+        email: user.email,
         subject: 'Please verify your email',
         mailgenContent: emailVefification(
             user.username,
@@ -73,7 +76,7 @@ const registerUser = asyncHandler(async (req, res) => {
             new ApiResponse(
                 200,
                 { user: createdUser },
-                'user registered successfully Verification email has been sent to your email',
+                'User registered successfully. Verification email has been sent to your email.',
             ),
         );
 });
