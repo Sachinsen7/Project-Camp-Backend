@@ -1,8 +1,8 @@
 import UserModel from '../models/user.models.js';
 import { ApiResponse } from '../utils/apiResponse.js';
-import { ApiError } from '../utils/apiError.js';
+import ApiError from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import sendEmail, { emailVefification } from '../utils/mail.js';
+import { sendEmail, emailVefification } from '../utils/mail.js';
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
