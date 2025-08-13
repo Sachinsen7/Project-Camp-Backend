@@ -1,4 +1,45 @@
+import Mailgen from 'mailgen';
 import mailgen from 'mailgen';
+import nodeMailer from 'nodemailer';
+
+const sendEmail = async (options) => {
+    const maileGenerator = new Mailgen({
+        theme: 'default',
+        product: {
+            name: 'Project Camp',
+            link: 'https://project-camp.vercel.app',
+        },
+    });
+
+    const emailTectual = maileGenerator.generatePlaintext(
+        options.mailgenContent,
+    );
+
+    const emailHtml = maileGenerator.generate(options.mailgenContent);
+
+    const transporter = nodeMailer.createTransport({
+        host: process.env.MAILTRAP_SMTP_HOST,
+        port: process.env.MAILTRAP_SMTP_PORT,
+        auth: {
+            user: process.env.MAILTRAP_SMTP_USER,
+            pass: process.env.MAILTRAP_SMTP_PASS,
+        },
+    });
+
+    const mail = {
+        from: 'Project Camp <b6H0o@example.com>',
+        to: options.email,
+        subject: options.subject,
+        text: emailTectual,
+        html: emailHtml,
+    };
+
+    try {
+        await transporter.sendMail(mail);
+    } catch (error) {
+        console.error('Error sending email:', error);
+    }
+};
 
 const emailVefification = (username, verificationUrl) => {
     return {
@@ -37,3 +78,5 @@ const forgotPasswordMailgen = (username, passwordResetUrl) => {
         },
     };
 };
+
+export { emailVefification, forgotPasswordMailgen, sendEmail };
