@@ -82,46 +82,42 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre('save', async function (next) {
-    await bcrypt.hash(this.password, 10, (err, hash) => {
-        if (err) {
-            next(err);
-        } else {
-            this.password = hash;
-            next();
-        }
-    });
+    if (!this.isModified('password')) return next();
+
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
+    } catch (err) {
+        next(err);
+    }
 });
 
 userSchema.methods.comparePassword = async function (password) {
     return await bcrypt.compare(password, this.password);
 };
 
-userSchema.methods.generateAccessToken = async function () {
-    jwt.sign(
+userSchema.methods.generateAccessToken = function () {
+    return jwt.sign(
         {
             _id: this._id,
             username: this.username,
             email: this.email,
         },
-
         process.env.ACCESS_TOKEN_SECRET,
-        {
-            expiresIn: ACCESS_TOKEN_EXPIRY,
-        },
+        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
     );
 };
 
-userSchema.methods.generateRefreshToken = async function () {
-    jwt.sign(
+userSchema.methods.generateRefreshToken = function () {
+    return jwt.sign(
         {
             _id: this._id,
             username: this.username,
             email: this.email,
         },
         process.env.REFRESH_TOKEN_SECRET,
-        {
-            expiresIn: REFRESH_TOKEN_EXPIRY,
-        },
+        { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
     );
 };
 
