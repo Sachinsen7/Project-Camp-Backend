@@ -2,7 +2,11 @@ import UserModel from '../models/user.models.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import ApiError from '../utils/apiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { sendEmail, emailVefification } from '../utils/mail.js';
+import {
+    sendEmail,
+    emailVefification,
+    forgotPasswordMailgen,
+} from '../utils/mail.js';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
@@ -289,6 +293,43 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 });
 
+const forgotPasswordRequest = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+
+    const user = UserModel.findOne({ email });
+
+    if (!user) {
+        throw new ApiError(404, 'User does not exists');
+    }
+
+    const { unHashedToken, hashedToken, tokenExpiry } =
+        user.generateTemporaryToken();
+
+    user.forgotPasswordToken = hashedToken;
+    user.forgotPasswordExpiry = tokenExpiry;
+
+    await user.save({ validateBeforeSave: false });
+
+    await sendEmail({
+        email: user.email,
+        subject: 'Password reset request',
+        mailgenContent: forgotPasswordMailgen(
+            user.username,
+            `${process.env.FORGOT_PASSWORD_REDIRECT_URL}/${unHashedToken}`,
+        ),
+    });
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {},
+                'Passwords reset request sent to your email ID',
+            ),
+        );
+});
+
 export {
     registerUser,
     loginUser,
@@ -297,4 +338,5 @@ export {
     verifyEmail,
     resendEmailVerification,
     refreshAccessToken,
+    forgotPasswordRequest,
 };
