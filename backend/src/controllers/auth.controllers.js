@@ -76,15 +76,14 @@ const registerUser = asyncHandler(async (req, res) => {
         );
     }
 
-    return res
-        .status(201)
-        .json(
-            new ApiResponse(
-                200,
-                { user: createdUser },
-                'User registered successfully. Verification email has been sent to your email.',
-            ),
-        );
+    return res.status(201).json(
+        new ApiResponse(
+            200,
+            { user: createdUser, verificationToken: unHashedToken },
+
+            'User registered successfully. Verification email has been sent to your email.',
+        ),
+    );
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -183,7 +182,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
         .update(verificationToken)
         .digest('hex');
 
-    await UserModel.findOne({
+    const user = await UserModel.findOne({
         emailVerificationToken: hashedToken,
         emailVerificationExpiry: { $gt: Date.now() },
     });
@@ -196,7 +195,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
     user.emailVerificationExpiry = undefined;
 
     user.isEmailVerified = true;
-    await UserModel.save({ validateBeforeSave: false });
+    await user.save({ validateBeforeSave: false });
 
     return res.status(200).json(
         new ApiResponse(
@@ -253,7 +252,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             process.env.REFRESH_TOKEN_SECRET,
         );
 
-        const user = UserModel.findById(decodeRefreshToken?._id);
+        const user = await UserModel.findById(decodeRefreshToken?._id);
 
         if (!user) {
             throw new ApiError(401, 'Invalid refresh token');
@@ -287,16 +286,14 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
                 ),
             );
     } catch (error) {
-        if (!user) {
-            throw new ApiError(401, 'Invalid refresh token');
-        }
+        throw new ApiError(401, 'Invalid refresh token');
     }
 });
 
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
     const { email } = req.body;
 
-    const user = UserModel.findOne({ email });
+    const user = await UserModel.findOne({ email });
 
     if (!user) {
         throw new ApiError(404, 'User does not exists');
@@ -362,9 +359,9 @@ const resetForgotPassword = asyncHandler(async (req, res) => {
 const changeCurrentPassword = asyncHandler(async (req, res) => {
     const { oldPassword, newPassword } = req.body;
 
-    const user = UserModel.findById(req.user?.id);
+    const user = await UserModel.findById(req.user?.id);
 
-    const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+    const isPasswordValid = await user.comparePassword(oldPassword);
 
     if (!isPasswordValid) {
         throw new ApiError(400, 'Invalid Old Password');
