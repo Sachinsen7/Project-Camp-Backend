@@ -5,6 +5,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { ApiResponse } from '../utils/apiResponse';
 import { ProjectModel } from '../models/project.model';
 import { UserRolesEnum } from '../utils/constants';
+import ApiError from '../utils/apiError';
 
 const getProjects = asyncHandler(async (req, res) => {
     const projects = await ProjectMemberModel.aggregate([
@@ -67,7 +68,7 @@ const getProjectById = asyncHandler(async (req, res) => {
     const project = await ProjectModel.findById(projectId);
 
     if (!project) {
-        throw new Error(404, 'Project not found');
+        throw new ApiError(404, 'Project not found');
     }
 
     return res
@@ -95,4 +96,26 @@ const createProject = asyncHandler(async (req, res) => {
         .json(new ApiResponse(201, project, 'Project created Successfully'));
 });
 
-export { getProjects, getProjectById, createProject };
+const updateProject = asyncHandler(async (req, res) => {
+    const { name, description } = req.body;
+    const { projectId } = req.params;
+
+    const project = await ProjectModel.findByIdAndUpdate(
+        projectId,
+        {
+            name,
+            description,
+        },
+        { new: true },
+    );
+
+    if (!project) {
+        throw new ApiError(404, 'Project not found');
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, project, 'Project updated successfully'));
+});
+
+export { getProjects, getProjectById, createProject, updateProject };
