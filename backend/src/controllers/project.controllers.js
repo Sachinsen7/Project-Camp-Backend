@@ -3,6 +3,8 @@ import { ProjectMemberModel } from '../models/project-member-model';
 import UserModel from '../models/user.models';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiResponse } from '../utils/apiResponse';
+import { ProjectModel } from '../models/project.model';
+import { UserRolesEnum } from '../utils/constants';
 
 const getProjects = asyncHandler(async (req, res) => {
     const projects = await ProjectMemberModel.aggregate([
@@ -60,4 +62,37 @@ const getProjects = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, projects, 'Projects fetched successfully'));
 });
 
-export { getProjects };
+const getProjectById = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const project = await ProjectModel.findById(projectId);
+
+    if (!project) {
+        throw new Error(404, 'Project not found');
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, 'Project fetched successfully'));
+});
+
+const createProject = asyncHandler(async (req, res) => {
+    const { name, description } = req.body;
+
+    const project = await ProjectModel.create({
+        name,
+        description,
+        createdBy: new mongoose.Types.ObjectId(req.user._id),
+    });
+
+    await ProjectMemberModel.create({
+        user: new mongoose.Types.ObjectId(req.user._id),
+        project: new mongoose.Types.ObjectId(project._id),
+        role: UserRolesEnum.ADMIN,
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, project, 'Project created Successfully'));
+});
+
+export { getProjects, getProjectById, createProject };
